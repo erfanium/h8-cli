@@ -1,0 +1,48 @@
+{
+  "name": "@erfanium/h8-cli",
+  "version": "0.2.0",
+  "description": "CLI for Hamravesh",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/erfanium/h8-cli.git"
+  },
+  "keywords": ["hamravesh", "darkube", "paas", "cli", "kubectl", "kubernetes", "cloud"],
+  "engines": {
+    "node": ">=22"
+  },
+  "oclif": {
+    "dirname": "h8",
+    "commands": "./dist/commands",
+    "bin": "h8",
+    "topicSeparator": " "
+  },
+  "bin": {
+    "h8": "./bin/run.js"
+  },
+  "files": [
+    "/bin",
+    "/dist"
+  ],
+  "scripts": {
+    "build": "shx rm -rf dist && tsc -b",
+    "dev": "node --loader ts-node/esm ./bin/dev.js",
+    "lint": "tsc --noEmit",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@oclif/core": "^4",
+    "chalk": "^5",
+    "cli-table3": "^0.6",
+    "js-yaml": "^5"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4",
+    "@types/node": "^22",
+    "shx": "^0.4",
+    "ts-node": "^10",
+    "typescript": "^5"
+  },
+  "oclif:env": "node22"
+}

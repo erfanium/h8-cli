@@ -4,6 +4,9 @@
   "description": "CLI for Hamravesh",
   "type": "module",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/erfanium/h8-cli.git"

@@ -2,7 +2,7 @@
 
 Command-line interface for [Hamravesh](https://hamravesh.com), the Iranian cloud platform.
 
-[![screenshot](screenshot.png)](https://github.com/erfanium/h8)
+[![screenshot](screenshot.png)](https://github.com/erfanium/h8-cli)
 
 
 ## Install
@@ -25,7 +25,7 @@ npx @erfanium/h8-cli app list
 ### From source
 
 ```bash
-git clone https://github.com/erfanium/h8.git
+git clone https://github.com/erfanium/h8-cli.git
 cd cli
 npm install
 npm run build

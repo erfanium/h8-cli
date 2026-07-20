@@ -64,7 +64,7 @@ function parseImage(raw: string): { repo: string; tag: string } {
   const idx = raw.lastIndexOf(":");
   if (idx === -1) return { repo: raw, tag: "latest" };
   const tag = raw.slice(idx + 1);
-  if (tag.includes("/") || tag.includes(".")) return { repo: raw, tag: "latest" };
+  if (tag.includes("/")) return { repo: raw, tag: "latest" };
   return { repo: raw.slice(0, idx), tag };
 }
 

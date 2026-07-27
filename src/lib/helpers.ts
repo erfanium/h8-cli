@@ -2,6 +2,12 @@ import { api } from "./api.js";
 
 const PAAS = "darkube";
 
+export function guardDestructive(): void {
+  if (process.env.H8_ALLOW_DESTRUCTIVE !== "true") {
+    throw new Error("Destructive commands are disabled. Set H8_ALLOW_DESTRUCTIVE=true to enable.");
+  }
+}
+
 export async function resolveAppId(nameOrId: string): Promise<string> {
   if (nameOrId.includes("-") && nameOrId.length > 30) return nameOrId;
   const res = await api<{ results: Array<{ id: string; name: string }> }>(
@@ -12,13 +18,17 @@ export async function resolveAppId(nameOrId: string): Promise<string> {
   return match.id;
 }
 
-const WRITABLE = new Set([
-  "name", "creation_method", "namespace", "cluster", "plan", "organization",
-  "image_repo", "image_tag", "replicas", "enable_SSL", "custom_subdomain_addr",
-  "svc", "builder", "envs", "disk",
+const READONLY = new Set([
+  "id", "state", "token", "custom_domain_address", "mirror_custom_domain_address",
+  "cpu_request", "ram_limit", "is_enabled", "enable_ssl", "ssl_issuer",
+  "created_at", "updated_at", "share_link",
 ]);
 
-export interface AppConfig {
+interface NestedId { id: number | string }
+
+const NESTED_KEYS = new Set(["namespace", "cluster", "plan", "organization"]);
+
+export interface AppConfig extends Record<string, unknown> {
   name: string;
   creation_method: string;
   namespace: number;
@@ -38,17 +48,16 @@ export interface AppConfig {
 export async function getWritable(appId: string): Promise<AppConfig> {
   const raw = await api<Record<string, unknown>>(`/api/v1/${PAAS}/apps/${appId}/`);
   const config: Record<string, unknown> = {};
-  for (const key of WRITABLE) {
-    if (key in raw) config[key] = raw[key];
+  for (const key of Object.keys(raw)) {
+    if (!READONLY.has(key)) {
+      config[key] = raw[key];
+    }
   }
-  if (typeof config.namespace === "object" && config.namespace)
-    config.namespace = (config.namespace as Record<string, unknown>).id;
-  if (typeof config.cluster === "object" && config.cluster)
-    config.cluster = (config.cluster as Record<string, unknown>).id;
-  if (typeof config.plan === "object" && config.plan)
-    config.plan = (config.plan as Record<string, unknown>).id;
-  if (typeof config.organization === "object" && config.organization)
-    config.organization = (config.organization as Record<string, unknown>).id;
+  for (const key of NESTED_KEYS) {
+    if (config[key] && typeof config[key] === "object") {
+      config[key] = (config[key] as NestedId).id;
+    }
+  }
   return config as unknown as AppConfig;
 }
 

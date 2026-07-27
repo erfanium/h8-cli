@@ -53,7 +53,7 @@ function parsePort(raw: string): { name: string; protocol: string; servicePort: 
   const [left, right] = raw.split(":");
   if (!left || !right) throw new Error(`Invalid port format: "${raw}". Use servicePort:containerPort (e.g. 80:3000)`);
   return {
-    name: left === "80" || left === "443" ? "main" : `port-${left}`,
+    name: `port-${left}`,
     protocol: "TCP",
     servicePort: parseInt(left, 10),
     containerPort: parseInt(right, 10),
@@ -92,7 +92,7 @@ export default class AppCreate extends Command {
 
     // Check subdomain availability
     try {
-      await api(`/${PAAS}/apps/check_subdomain/`, { method: "POST", body: { subdomain } });
+      await api(`/api/v1/${PAAS}/apps/check_subdomain/`, { method: "POST", body: { subdomain } });
     } catch (e) {
       if (e instanceof Error && e.message.includes("400")) {
         this.error(`Subdomain "${subdomain}" is already taken. Use --subdomain to pick another.`);
@@ -101,9 +101,15 @@ export default class AppCreate extends Command {
     }
 
     const ports: Record<string, unknown> = {};
-    for (const p of flags.port) {
-      const parsed = parsePort(p);
-      ports[parsed.name] = { protocol: parsed.protocol, servicePort: parsed.servicePort, containerPort: parsed.containerPort };
+    const parsedPorts = flags.port.map(parsePort);
+    for (const p of parsedPorts) {
+      ports[p.name] = { protocol: p.protocol, servicePort: p.servicePort, containerPort: p.containerPort };
+    }
+    // Rename first port to "main"
+    if (parsedPorts.length > 0) {
+      const first = parsedPorts[0];
+      delete ports[first.name];
+      ports.main = { protocol: first.protocol, servicePort: first.servicePort, containerPort: first.containerPort };
     }
 
     const appConfig: Record<string, unknown> = {

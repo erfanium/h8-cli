@@ -1,5 +1,6 @@
 import { Command, Args } from "@oclif/core";
 import { api } from "../../lib/api.js";
+import { guardDestructive } from "../../lib/helpers.js";
 
 const PAAS = "darkube";
 
@@ -17,6 +18,7 @@ export default class AppRestart extends Command {
   static description = "Restart an app";
   static args = { app: Args.string({ description: "App name or ID", required: true }) };
   async run() {
+    guardDestructive();
     const { args } = await this.parse(AppRestart);
     const appId = await resolve(args.app);
     await api(`/api/v1/${PAAS}/apps/${appId}/restart/`, { method: "POST", body: {} });

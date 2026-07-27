@@ -64,24 +64,29 @@ export async function refreshToken(refreshToken: string): Promise<string> {
   return data.id_token;
 }
 
-export async function resolveToken(): Promise<string> {
+export async function resolveToken(log?: (msg: string) => void): Promise<string> {
   const rt = process.env.H8_KUBECTL_REFRESH_TOKEN?.trim();
   if (rt) {
     const cached = readTokenFromCache(rt);
     if (cached) return cached;
-    return refreshToken(rt);
+    try {
+      return await refreshToken(rt);
+    } catch (e) {
+      const msg = `Token refresh failed: ${(e as Error).message}`;
+      if (log) log(msg);
+    }
   }
   const idToken = process.env.H8_KUBECTL_TOKEN?.trim();
   if (idToken) return idToken;
-  throw new Error("No kubectl token available. Set H8_KUBECTL_REFRESH_TOKEN after running: h8 login kubectl");
+  throw new Error("No kubectl token available. Run: h8 login kubectl\nThen: export H8_KUBECTL_REFRESH_TOKEN=\"<token>\"");
 }
 
-export async function prepareKubeconfig(opts?: { cluster?: string; namespace?: string }): Promise<{ path: string; cleanup: () => void }> {
+export async function prepareKubeconfig(opts?: { cluster?: string; namespace?: string; log?: (msg: string) => void }): Promise<{ path: string; cleanup: () => void }> {
   const config = getConfig();
   const org = config.organization || process.env.H8_ORGANIZATION || "";
   if (!org) throw new Error("H8_ORGANIZATION not set.");
 
-  const token = await resolveToken();
+  const token = await resolveToken(opts?.log);
 
   const headers: Record<string, string> = {
     "Authorization": `Api-key ${config.api_key}`,

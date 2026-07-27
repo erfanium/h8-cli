@@ -26,7 +26,11 @@ export default class Kubectl extends Command {
       }
     }
 
-    const { path, cleanup } = await prepareKubeconfig({ cluster: flags.cluster, namespace: flags.namespace });
+    const { path, cleanup } = await prepareKubeconfig({
+      cluster: flags.cluster,
+      namespace: flags.namespace,
+      log: (msg: string) => this.log(msg),
+    });
 
     try {
       const args = process.argv.slice(3).filter((a, i, arr) => {

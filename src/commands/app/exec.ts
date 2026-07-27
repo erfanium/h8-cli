@@ -1,5 +1,4 @@
 import { Command, Args } from "@oclif/core";
-import { resolveAppId } from "../../lib/helpers.js";
 import { prepareKubeconfig, runKubectl } from "../../lib/kube.js";
 import { spawnSync } from "node:child_process";
 
@@ -12,7 +11,6 @@ export default class AppExec extends Command {
 
   async run() {
     const { args } = await this.parse(AppExec);
-    const appId = await resolveAppId(args.app);
 
     const raw = process.argv.slice(3);
     const dashIdx = raw.indexOf("--");
@@ -21,7 +19,7 @@ export default class AppExec extends Command {
     }
     const execArgs = raw.slice(dashIdx + 1);
 
-    const { path, cleanup } = await prepareKubeconfig();
+    const { path, cleanup } = await prepareKubeconfig({ log: (msg: string) => this.log(msg) });
 
     try {
       const podsJson = execKubectlJson(["get", "pods", "-o", "json"], path);

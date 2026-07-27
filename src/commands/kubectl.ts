@@ -10,27 +10,10 @@ import { load, dump } from "js-yaml";
 const ISSUER = "https://api.console.hamravesh.ir/openid";
 const CLIENT_ID = "kubernetes";
 const TOKEN_DIR = join(tmpdir(), "h8");
-const REF_TOKEN_FILE = join(TOKEN_DIR, ".ref");
 
 function tokenFile(refreshToken: string): string {
   const h = createHash("sha256").update(refreshToken).digest("hex").slice(0, 16);
   return join(TOKEN_DIR, `token_${h}`);
-}
-
-function readStoredRefreshToken(): string | null {
-  const fromEnv = process.env.H8_KUBECTL_REFRESH_TOKEN?.trim();
-  if (fromEnv) return fromEnv;
-  try {
-    if (!existsSync(REF_TOKEN_FILE)) return null;
-    return readFileSync(REF_TOKEN_FILE, "utf-8").trim();
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredRefreshToken(rt: string): void {
-  mkdirSync(TOKEN_DIR, { recursive: true });
-  writeFileSync(REF_TOKEN_FILE, rt, "utf-8");
 }
 
 function readTokenFromCache(refreshToken: string): string | null {
@@ -79,7 +62,6 @@ async function refreshToken(refreshToken: string): Promise<string> {
   const data = await res.json() as { id_token: string; refresh_token: string };
   const newRt = data.refresh_token || refreshToken;
   writeTokenToCache(newRt, data.id_token);
-  writeStoredRefreshToken(newRt);
   return data.id_token;
 }
 
@@ -112,9 +94,9 @@ export default class Kubectl extends Command {
     const org = config.organization || process.env.H8_ORGANIZATION || "";
     if (!org) throw new Error("H8_ORGANIZATION not set.");
 
-    // Resolve token: tmp cache → refresh from stored rt → env H8_KUBECTL_TOKEN
+    // Resolve token: cached → refresh via H8_KUBECTL_REFRESH_TOKEN → env H8_KUBECTL_TOKEN
     let token: string | null = null;
-    const rt = readStoredRefreshToken();
+    const rt = process.env.H8_KUBECTL_REFRESH_TOKEN?.trim();
     if (rt) {
       token = readTokenFromCache(rt);
       if (!token) {
@@ -131,7 +113,8 @@ export default class Kubectl extends Command {
       token = process.env.H8_KUBECTL_TOKEN ?? null;
     }
     if (!token) {
-      this.log("No kubectl token available. Run: h8 login kubectl");
+      this.log("No kubectl token available.");
+      this.log("Set H8_KUBECTL_REFRESH_TOKEN after running: h8 login kubectl");
       return;
     }
 

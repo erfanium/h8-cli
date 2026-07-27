@@ -3,12 +3,6 @@ import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
 import http from "node:http";
 import { exec } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-
-const TOKEN_DIR = join(tmpdir(), "h8");
-const REF_TOKEN_FILE = join(TOKEN_DIR, ".ref");
 
 const ISSUER = "https://api.console.hamravesh.ir/openid";
 const CLIENT_ID = "kubernetes";
@@ -191,17 +185,13 @@ export default class LoginKubectl extends Command {
         );
     const tokens = JSON.parse(raw) as { access_token: string; id_token: string; refresh_token: string };
 
-    mkdirSync(TOKEN_DIR, { recursive: true });
-    writeFileSync(REF_TOKEN_FILE, tokens.refresh_token, "utf-8");
-
     this.log("");
     this.log("Refresh token:");
     this.log(`  ${tokens.refresh_token}`);
     this.log("");
-    this.log("Set it as an environment variable to avoid re-login:");
+    this.log("Set the refresh token as an environment variable:");
     this.log('  export H8_KUBECTL_REFRESH_TOKEN="' + tokens.refresh_token + '"');
     this.log("");
     this.log("Add the export line to your shell profile (.bashrc / .zshrc) to persist it.");
-    this.log("(Saved to /tmp/h8/.ref as fallback.)");
   }
 }

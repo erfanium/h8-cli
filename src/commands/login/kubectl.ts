@@ -183,25 +183,25 @@ export default class LoginKubectl extends Command {
   async run() {
     const { flags } = await this.parse(LoginKubectl);
 
-    if (flags.browser) {
-      const raw = await browserLogin();
-      const tokens = JSON.parse(raw) as { access_token: string; id_token: string; refresh_token: string };
-      mkdirSync(TOKEN_DIR, { recursive: true });
-      writeFileSync(REF_TOKEN_FILE, tokens.refresh_token, "utf-8");
-      this.log("Saved kubectl credentials to /tmp/h8/");
-      return;
-    }
-
-    const email = flags.email || await prompt("Email: ");
-    const password = flags.password || await promptSecret("Password: ");
-    if (!email || !password) {
-      this.error("Email and password are required.");
-    }
-
-    const raw = await passwordLogin(email, password);
+    const raw = flags.browser
+      ? await browserLogin()
+      : await passwordLogin(
+          flags.email || await prompt("Email: "),
+          flags.password || await promptSecret("Password: "),
+        );
     const tokens = JSON.parse(raw) as { access_token: string; id_token: string; refresh_token: string };
+
     mkdirSync(TOKEN_DIR, { recursive: true });
     writeFileSync(REF_TOKEN_FILE, tokens.refresh_token, "utf-8");
-    this.log("Saved kubectl credentials to /tmp/h8/");
+
+    this.log("");
+    this.log("Refresh token:");
+    this.log(`  ${tokens.refresh_token}`);
+    this.log("");
+    this.log("Set it as an environment variable to avoid re-login:");
+    this.log('  export H8_KUBECTL_REFRESH_TOKEN="' + tokens.refresh_token + '"');
+    this.log("");
+    this.log("Add the export line to your shell profile (.bashrc / .zshrc) to persist it.");
+    this.log("(Saved to /tmp/h8/.ref as fallback.)");
   }
 }

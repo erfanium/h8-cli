@@ -18,6 +18,8 @@ function tokenFile(refreshToken: string): string {
 }
 
 function readStoredRefreshToken(): string | null {
+  const fromEnv = process.env.H8_KUBECTL_REFRESH_TOKEN?.trim();
+  if (fromEnv) return fromEnv;
   try {
     if (!existsSync(REF_TOKEN_FILE)) return null;
     return readFileSync(REF_TOKEN_FILE, "utf-8").trim();

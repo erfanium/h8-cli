@@ -2,9 +2,6 @@ import { Command, Args } from "@oclif/core";
 import { resolveAppId } from "../../lib/helpers.js";
 import { prepareKubeconfig, runKubectl } from "../../lib/kube.js";
 import { spawnSync } from "node:child_process";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { unlinkSync } from "node:fs";
 
 export default class AppExec extends Command {
   static description = "Run a command inside an app's pod (auto-finds the pod name)";
@@ -65,18 +62,13 @@ export default class AppExec extends Command {
 }
 
 function execKubectlJson(args: string[], kubeconfigPath: string): unknown {
-  const tmpFile = join(tmpdir(), `h8-exec-${Date.now()}.json`);
-  try {
-    const result = spawnSync("kubectl", args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, KUBECONFIG: kubeconfigPath },
-    });
-    if (result.error) throw result.error;
-    if (result.status !== 0) {
-      throw new Error(`kubectl failed (${result.status}): ${result.stderr.toString()}`);
-    }
-    return JSON.parse(result.stdout.toString());
-  } finally {
-    try { unlinkSync(tmpFile); } catch {}
+  const result = spawnSync("kubectl", args, {
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, KUBECONFIG: kubeconfigPath },
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`kubectl failed (${result.status}): ${result.stderr.toString()}`);
   }
+  return JSON.parse(result.stdout.toString());
 }

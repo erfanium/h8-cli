@@ -5,6 +5,7 @@ export function printTable(
   rows: Record<string, unknown>[],
   head: string[],
   accessors: Array<(row: Record<string, unknown>) => string>,
+  opts?: { wordWrap?: boolean; colWidths?: (number | null)[] },
 ): string {
   if (rows.length === 0) return "No resources found.";
 
@@ -17,7 +18,8 @@ export function printTable(
       right: "", "right-mid": "", middle: " ",
     },
     style: { "padding-left": 0, "padding-right": 1 },
-    wordWrap: false,
+    wordWrap: opts?.wordWrap ?? false,
+    colWidths: opts?.colWidths,
   });
 
   for (const row of rows) {

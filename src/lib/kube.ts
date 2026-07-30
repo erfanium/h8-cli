@@ -1,7 +1,7 @@
 import { getConfig } from "./config.js";
 import { spawnSync } from "node:child_process";
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { load, dump } from "js-yaml";
@@ -9,6 +9,30 @@ import { load, dump } from "js-yaml";
 const ISSUER = "https://api.console.hamravesh.ir/openid";
 const CLIENT_ID = "kubernetes";
 const TOKEN_DIR = join(tmpdir(), "h8");
+const KUBECTL_DIR = join(homedir(), ".config", "h8");
+const KUBECTL_FILE = join(KUBECTL_DIR, "kubectl.json");
+
+type KubectlTokens = Record<string, string>;
+
+function readKubectlTokens(): KubectlTokens {
+  try {
+    if (!existsSync(KUBECTL_FILE)) return {};
+    return JSON.parse(readFileSync(KUBECTL_FILE, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeKubectlTokens(tokens: KubectlTokens): void {
+  mkdirSync(KUBECTL_DIR, { recursive: true });
+  writeFileSync(KUBECTL_FILE, JSON.stringify(tokens, null, 2) + "\n", "utf-8");
+}
+
+export function saveTokenForOrg(org: string, refreshToken: string): void {
+  const tokens = readKubectlTokens();
+  tokens[org] = refreshToken;
+  writeKubectlTokens(tokens);
+}
 
 function tokenFile(refreshToken: string): string {
   const h = createHash("sha256").update(refreshToken).digest("hex").slice(0, 16);
@@ -43,7 +67,7 @@ export function isTokenExpired(token: string): boolean {
   }
 }
 
-export async function refreshToken(refreshToken: string): Promise<string> {
+export async function refreshToken(refreshToken: string, org?: string): Promise<string> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     client_id: CLIENT_ID,
@@ -61,24 +85,29 @@ export async function refreshToken(refreshToken: string): Promise<string> {
   const data = await res.json() as { id_token: string; refresh_token: string };
   const newRt = data.refresh_token || refreshToken;
   writeTokenToCache(newRt, data.id_token);
+  if (data.refresh_token && org) {
+    saveTokenForOrg(org, data.refresh_token);
+  }
   return data.id_token;
 }
 
-export async function resolveToken(log?: (msg: string) => void): Promise<string> {
-  const rt = process.env.H8_KUBECTL_REFRESH_TOKEN?.trim();
+export async function resolveToken(org: string, log?: (msg: string) => void): Promise<string> {
+  const tokens = readKubectlTokens();
+  const rt = tokens[org] || tokens["default"];
   if (rt) {
     const cached = readTokenFromCache(rt);
     if (cached) return cached;
     try {
-      return await refreshToken(rt);
+      return await refreshToken(rt, org);
     } catch (e) {
-      const msg = `Token refresh failed: ${(e as Error).message}`;
-      if (log) log(msg);
+      if (log) log(`Token refresh failed: ${(e as Error).message}`);
     }
   }
+
   const idToken = process.env.H8_KUBECTL_TOKEN?.trim();
   if (idToken) return idToken;
-  throw new Error("No kubectl token available. Run: h8 login kubectl\nThen: export H8_KUBECTL_REFRESH_TOKEN=\"<token>\"");
+
+  throw new Error("No kubectl token available. Run: h8 login kubectl");
 }
 
 export async function prepareKubeconfig(opts?: { cluster?: string; namespace?: string; log?: (msg: string) => void }): Promise<{ path: string; cleanup: () => void }> {
@@ -86,7 +115,7 @@ export async function prepareKubeconfig(opts?: { cluster?: string; namespace?: s
   const org = config.organization || process.env.H8_ORGANIZATION || "";
   if (!org) throw new Error("H8_ORGANIZATION not set.");
 
-  const token = await resolveToken(opts?.log);
+  const token = await resolveToken(org, opts?.log);
 
   const headers: Record<string, string> = {
     "Authorization": `Api-key ${config.api_key}`,

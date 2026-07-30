@@ -3,6 +3,8 @@ import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
 import http from "node:http";
 import { exec } from "node:child_process";
+import { getConfig } from "../../lib/config.js";
+import { saveTokenForOrg } from "../../lib/kube.js";
 
 const ISSUER = "https://api.console.hamravesh.ir/openid";
 const CLIENT_ID = "kubernetes";
@@ -67,7 +69,7 @@ async function startServer(): Promise<{ server: http.Server; port: number }> {
 async function browserLogin(): Promise<string> {
   const { server, port } = await startServer();
   const redirectUri = `http://localhost:${port}`;
-  const authUrl = `${ISSUER}/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent("openid profile email")}`;
+  const authUrl = `${ISSUER}/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent("openid profile email offline_access")}`;
 
   console.log("Opening browser for login...");
   console.log(`If the browser does not open, visit:\n  ${authUrl}`);
@@ -144,7 +146,7 @@ async function passwordLogin(email: string, password: string): Promise<string> {
     client_id: CLIENT_ID,
     username: email,
     password,
-    scope: "openid profile email",
+    scope: "openid profile email offline_access",
   });
 
   const res = await fetch(`${ISSUER}/token`, {
@@ -185,13 +187,13 @@ export default class LoginKubectl extends Command {
         );
     const tokens = JSON.parse(raw) as { access_token: string; id_token: string; refresh_token: string };
 
-    this.log("");
-    this.log("Refresh token:");
-    this.log(`  ${tokens.refresh_token}`);
-    this.log("");
-    this.log("Set the refresh token as an environment variable:");
-    this.log('  export H8_KUBECTL_REFRESH_TOKEN="' + tokens.refresh_token + '"');
-    this.log("");
-    this.log("Add the export line to your shell profile (.bashrc / .zshrc) to persist it.");
+    let org = "default";
+    try {
+      const cfg = getConfig();
+      if (cfg.organization) org = cfg.organization;
+    } catch {}
+
+    saveTokenForOrg(org, tokens.refresh_token);
+    this.log("Kubectl token saved successfully.");
   }
 }

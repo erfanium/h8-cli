@@ -26,7 +26,15 @@ export default class AppList extends Command {
       `/api/v2/${PAAS}/apps/?limit=${flags.limit}&offset=${flags.offset}&fields=${FIELDS}`,
     );
     if (flags.json) { this.log(printJSON(res.results)); return; }
-    this.log(printTable(res.results,
+
+    const rows = [...res.results].sort((a, b) => {
+      const nsA = String(((a.namespace as Record<string, unknown>)?.name as string) ?? "~");
+      const nsB = String(((b.namespace as Record<string, unknown>)?.name as string) ?? "~");
+      if (nsA !== nsB) return nsA.localeCompare(nsB);
+      return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+    });
+
+    this.log(printTable(rows,
       ["NAME", "STATE", "NS", "CLUSTER", "PLAN", "REPLICAS", "DISKS", "DOMAIN"],
       [
         (r) => (r.name as string) ?? "",
@@ -47,6 +55,7 @@ export default class AppList extends Command {
         },
         (r) => (r.custom_domain_address as string) ?? "",
       ],
+      { wordWrap: true, colWidths: [null, null, null, null, null, null, 30, null] },
     ));
   }
 }

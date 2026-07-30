@@ -100,7 +100,7 @@ h8 app delete itools
 ### Apps
 
 ```
-h8 app list [--json] [--limit=N]        List apps
+h8 app list [--json] [--limit=N]        List apps (sorted by namespace)
 h8 app describe <name|id> [--json]      Show app details
 h8 app create <name> [flags]            Create a new app
 h8 app restart <name>                   Restart an app
@@ -110,6 +110,8 @@ h8 app delete <name>                    Delete an app
 h8 app logs <name> [--tail=N] [--json]  View app logs
 h8 app events <name> [--json]           Watch deployment events (WebSocket)
 h8 app pods <name> [--json]             List running pods
+h8 app exec <app> -- <command...>       Run a command inside a pod
+h8 app shell <name>                     Open an interactive shell
 ```
 
 ### Mutations (kubectl-style set)
@@ -141,7 +143,7 @@ h8 context describe <name> [--json]     Show context details
 
 ```
 h8 login kubectl [--email X] [--password Y]   Get a k8s OIDC token
-export H8_KUBECTL_TOKEN=<token>
+                                              (saved to ~/.config/h8/kubectl.json)
 
 h8 kubectl get pods                            Run kubectl commands
 h8 kubectl describe pod <name>
@@ -150,6 +152,8 @@ h8 kubectl get svc
 ```
 
 `h8 kubectl` fetches a kubeconfig from the API, injects your token, and passes all remaining arguments to the real `kubectl` binary. No files are written to `~/.kube` — fully stateless.
+
+Kubectl tokens are stored per-organization in `~/.config/h8/kubectl.json` and automatically refreshed when needed.
 
 ## JSON Output
 
@@ -167,7 +171,7 @@ h8 app events my-app --json
 |---|---|
 | `H8_API_KEY` | Hamravesh API key |
 | `H8_ORGANIZATION` | Organization name |
-| `H8_KUBECTL_TOKEN` | OIDC id_token for kubectl |
+| `H8_KUBECTL_TOKEN` | OIDC id_token for kubectl (optional, auto-managed) |
 | `H8_ALLOW_DESTRUCTIVE` | Set `true` to enable delete/stop/restart |
 
 ## License

@@ -104,9 +104,6 @@ export async function resolveToken(org: string, log?: (msg: string) => void): Pr
     }
   }
 
-  const idToken = process.env.H8_KUBECTL_TOKEN?.trim();
-  if (idToken) return idToken;
-
   throw new Error("No kubectl token available. Run: h8 login kubectl");
 }
 

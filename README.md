@@ -171,7 +171,6 @@ h8 app events my-app --json
 |---|---|
 | `H8_API_KEY` | Hamravesh API key |
 | `H8_ORGANIZATION` | Organization name |
-| `H8_KUBECTL_TOKEN` | OIDC id_token for kubectl (optional, auto-managed) |
 | `H8_ALLOW_DESTRUCTIVE` | Set `true` to enable delete/stop/restart |
 
 ## License

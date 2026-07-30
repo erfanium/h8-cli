@@ -45,9 +45,6 @@ npm uninstall -g @erfanium/h8-cli
 export H8_API_KEY=your-api-key
 export H8_ORGANIZATION=your-org
 
-# or persist to disk
-h8 login <api-key> --org <name>
-
 # verify
 h8 app list
 ```

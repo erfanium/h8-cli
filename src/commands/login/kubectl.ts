@@ -3,7 +3,6 @@ import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
 import http from "node:http";
 import { exec } from "node:child_process";
-import { getConfig } from "../../lib/config.js";
 import { saveTokenForOrg } from "../../lib/kube.js";
 
 const ISSUER = "https://api.console.hamravesh.ir/openid";
@@ -187,11 +186,7 @@ export default class LoginKubectl extends Command {
         );
     const tokens = JSON.parse(raw) as { access_token: string; id_token: string; refresh_token: string };
 
-    let org = "default";
-    try {
-      const cfg = getConfig();
-      if (cfg.organization) org = cfg.organization;
-    } catch {}
+    let org = process.env.H8_ORGANIZATION?.trim() || "default";
 
     saveTokenForOrg(org, tokens.refresh_token);
     this.log("Kubectl token saved successfully.");

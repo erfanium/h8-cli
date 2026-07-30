@@ -3,7 +3,7 @@ import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
 import http from "node:http";
 import { exec } from "node:child_process";
-import { saveTokenForOrg } from "../../lib/kube.js";
+import { saveRefreshToken } from "../../lib/kube.js";
 
 const ISSUER = "https://api.console.hamravesh.ir/openid";
 const CLIENT_ID = "kubernetes";
@@ -188,7 +188,7 @@ export default class LoginKubectl extends Command {
 
     let org = process.env.H8_ORGANIZATION?.trim() || "default";
 
-    saveTokenForOrg(org, tokens.refresh_token);
-    this.log("Kubectl token saved successfully.");
+    saveRefreshToken(org, tokens.refresh_token);
+    this.log("Refresh token saved successfully.");
   }
 }

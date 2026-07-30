@@ -8,13 +8,13 @@ import { load, dump } from "js-yaml";
 
 const ISSUER = "https://api.console.hamravesh.ir/openid";
 const CLIENT_ID = "kubernetes";
-const TOKEN_DIR = join(tmpdir(), "h8");
+const ACCESS_TOKEN_DIR = join(tmpdir(), "h8");
 const KUBECTL_DIR = join(homedir(), ".config", "h8");
 const KUBECTL_FILE = join(KUBECTL_DIR, "kubectl.json");
 
-type KubectlTokens = Record<string, string>;
+type RefreshTokenMap = Record<string, string>;
 
-function readKubectlTokens(): KubectlTokens {
+function readRefreshTokenMap(): RefreshTokenMap {
   try {
     if (!existsSync(KUBECTL_FILE)) return {};
     return JSON.parse(readFileSync(KUBECTL_FILE, "utf-8"));
@@ -23,42 +23,42 @@ function readKubectlTokens(): KubectlTokens {
   }
 }
 
-function writeKubectlTokens(tokens: KubectlTokens): void {
+function writeRefreshTokenMap(map: RefreshTokenMap): void {
   mkdirSync(KUBECTL_DIR, { recursive: true });
-  writeFileSync(KUBECTL_FILE, JSON.stringify(tokens, null, 2) + "\n", "utf-8");
+  writeFileSync(KUBECTL_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
 }
 
-export function saveTokenForOrg(org: string, refreshToken: string): void {
-  const tokens = readKubectlTokens();
-  tokens[org] = refreshToken;
-  writeKubectlTokens(tokens);
+export function saveRefreshToken(org: string, refreshToken: string): void {
+  const map = readRefreshTokenMap();
+  map[org] = refreshToken;
+  writeRefreshTokenMap(map);
 }
 
-function tokenFile(refreshToken: string): string {
+function accessTokenCacheFile(refreshToken: string): string {
   const h = createHash("sha256").update(refreshToken).digest("hex").slice(0, 16);
-  return join(TOKEN_DIR, `token_${h}`);
+  return join(ACCESS_TOKEN_DIR, `accessToken_${h}`);
 }
 
-export function readTokenFromCache(refreshToken: string): string | null {
+export function readAccessTokenFromCache(refreshToken: string): string | null {
   try {
-    const path = tokenFile(refreshToken);
+    const path = accessTokenCacheFile(refreshToken);
     if (!existsSync(path)) return null;
-    const token = readFileSync(path, "utf-8").trim();
-    if (!token || isTokenExpired(token)) return null;
-    return token;
+    const accessToken = readFileSync(path, "utf-8").trim();
+    if (!accessToken || isAccessTokenExpired(accessToken)) return null;
+    return accessToken;
   } catch {
     return null;
   }
 }
 
-export function writeTokenToCache(refreshToken: string, idToken: string): void {
-  mkdirSync(TOKEN_DIR, { recursive: true });
-  writeFileSync(tokenFile(refreshToken), idToken, "utf-8");
+export function writeAccessTokenToCache(refreshToken: string, accessToken: string): void {
+  mkdirSync(ACCESS_TOKEN_DIR, { recursive: true });
+  writeFileSync(accessTokenCacheFile(refreshToken), accessToken, "utf-8");
 }
 
-export function isTokenExpired(token: string): boolean {
+export function isAccessTokenExpired(accessToken: string): boolean {
   try {
-    const parts = token.split(".");
+    const parts = accessToken.split(".");
     if (parts.length < 2) return true;
     const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
     return (payload.exp * 1000) < Date.now() + 30_000;
@@ -67,7 +67,7 @@ export function isTokenExpired(token: string): boolean {
   }
 }
 
-export async function refreshToken(refreshToken: string, org?: string): Promise<string> {
+export async function refreshAccessToken(refreshToken: string, org?: string): Promise<string> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     client_id: CLIENT_ID,
@@ -80,31 +80,31 @@ export async function refreshToken(refreshToken: string, org?: string): Promise<
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Token refresh failed (${res.status}): ${text.slice(0, 200)}`);
+    throw new Error(`Failed to refresh access token (${res.status}): ${text.slice(0, 200)}`);
   }
   const data = await res.json() as { id_token: string; refresh_token: string };
-  const newRt = data.refresh_token || refreshToken;
-  writeTokenToCache(newRt, data.id_token);
+  const newRefreshToken = data.refresh_token || refreshToken;
+  writeAccessTokenToCache(newRefreshToken, data.id_token);
   if (data.refresh_token && org) {
-    saveTokenForOrg(org, data.refresh_token);
+    saveRefreshToken(org, data.refresh_token);
   }
   return data.id_token;
 }
 
-export async function resolveToken(org: string, log?: (msg: string) => void): Promise<string> {
-  const tokens = readKubectlTokens();
-  const rt = tokens[org] || tokens["default"];
-  if (rt) {
-    const cached = readTokenFromCache(rt);
+export async function resolveAccessToken(org: string, log?: (msg: string) => void): Promise<string> {
+  const map = readRefreshTokenMap();
+  const refreshToken = map[org] || map["default"];
+  if (refreshToken) {
+    const cached = readAccessTokenFromCache(refreshToken);
     if (cached) return cached;
     try {
-      return await refreshToken(rt, org);
+      return await refreshAccessToken(refreshToken, org);
     } catch (e) {
-      if (log) log(`Token refresh failed: ${(e as Error).message}`);
+      if (log) log(`Failed to refresh access token: ${(e as Error).message}`);
     }
   }
 
-  throw new Error("No kubectl token available. Run: h8 login kubectl");
+  throw new Error("No kubectl access token available. Run: h8 login kubectl");
 }
 
 export async function prepareKubeconfig(opts?: { cluster?: string; namespace?: string; log?: (msg: string) => void }): Promise<{ path: string; cleanup: () => void }> {
@@ -112,7 +112,7 @@ export async function prepareKubeconfig(opts?: { cluster?: string; namespace?: s
   const org = config.organization || process.env.H8_ORGANIZATION || "";
   if (!org) throw new Error("H8_ORGANIZATION not set.");
 
-  const token = await resolveToken(org, opts?.log);
+  const accessToken = await resolveAccessToken(org, opts?.log);
 
   const headers: Record<string, string> = {
     "Authorization": `Api-key ${config.api_key}`,
@@ -128,7 +128,7 @@ export async function prepareKubeconfig(opts?: { cluster?: string; namespace?: s
     if (u.user && typeof u.user === "object") {
       const user = u.user as Record<string, unknown>;
       delete user.exec;
-      user.token = token;
+      user.token = accessToken;
     }
   }
 

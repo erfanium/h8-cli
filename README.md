@@ -7,7 +7,7 @@ Command-line interface for [Hamravesh](https://hamravesh.com), the Iranian cloud
 
 ## Install
 
-Requires Node.js >= 22 and [kubectl](https://kubernetes.io/docs/tasks/tools/) (for `h8 kubectl`).
+Requires Node.js >= 22 and [kubectl](https://kubernetes.io/docs/tasks/tools/) (for `h8 kubectl`, `h8 app exec`, `h8 app shell`, `h8 app port-forward`).
 
 ### npm (global)
 
@@ -46,10 +46,21 @@ export H8_API_KEY=your-api-key
 export H8_ORGANIZATION=your-org
 
 # verify
+h8 whoami
 h8 app list
 ```
 
 Get an API key from the [Hamravesh Console](https://console.hamravesh.com) under your account settings.
+
+### Kubectl token
+
+Commands that shell out to the real `kubectl` binary — `h8 kubectl ...`, `h8 app exec`, `h8 app shell`, `h8 app port-forward` — also need a k8s OIDC token:
+
+```bash
+h8 login kubectl [--email X] [--password Y]
+```
+
+The token is saved per-organization in `~/.config/h8/kubectl.json` and automatically refreshed when needed.
 
 ## Quick Start
 
@@ -145,12 +156,15 @@ h8 context list [--json]                List deploy contexts
 h8 context describe <name> [--json]     Show context details
 ```
 
+### Account
+
+```
+h8 whoami [--json]                          Show current user info
+```
+
 ### kubectl
 
 ```
-h8 login kubectl [--email X] [--password Y]   Get a k8s OIDC token
-                                              (saved to ~/.config/h8/kubectl.json)
-
 h8 kubectl get pods                            Run kubectl commands
 h8 kubectl describe pod <name>
 h8 kubectl logs <pod-name>
@@ -159,13 +173,12 @@ h8 kubectl get svc
 
 `h8 kubectl` fetches a kubeconfig from the API, injects your token, and passes all remaining arguments to the real `kubectl` binary. No files are written to `~/.kube` — fully stateless.
 
-Kubectl tokens are stored per-organization in `~/.config/h8/kubectl.json` and automatically refreshed when needed.
-
 ## JSON Output
 
 Append `--json` to any command for machine-readable output:
 
 ```bash
+h8 whoami --json
 h8 app list --json
 h8 app describe my-app --json
 h8 app events my-app --json

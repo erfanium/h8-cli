@@ -27,6 +27,12 @@ export default class AppDescribe extends Command {
     const s = app.state as Record<string, unknown>;
     const p = app.plan as Record<string, unknown>;
     const d = p?.detail as Record<string, number>;
+    const svc = (app.svc ?? {}) as Record<string, unknown>;
+    const svcPorts = (svc.ports ?? {}) as Record<string, { nodePort?: number; protocol?: string; servicePort?: number; containerPort?: number }>;
+    const portLines = Object.entries(svcPorts).map(
+      ([name, port]) =>
+        `  ${name}: ${port.servicePort ?? "?"}:${port.containerPort ?? "?"} (${port.protocol ?? "TCP"}${port.nodePort ? `, nodePort ${port.nodePort}` : ""})`,
+    );
     this.log([
       `Name:       ${app.name}`,
       `ID:         ${app.id}`,
@@ -44,6 +50,11 @@ export default class AppDescribe extends Command {
       `Cluster:    ${(app.cluster as Record<string, unknown>)?.name ?? "-"}`,
       `Namespace:  ${(app.namespace as Record<string, unknown>)?.name ?? "-"}`,
       `Image:      ${app.image_repo}:${app.image_tag}`,
+      `Service:    ${(svc.type as string) ?? "-"}`,
+      `ExternalIP: ${(svc.externalIP as string) ?? "-"}`,
+      `External:   ${(svc.externalAddress as string) ?? "-"}`,
+      `Internal:   ${(svc.internalAddress as string) ?? "-"}`,
+      ...(portLines.length > 0 ? [`Ports:` as string, ...portLines] : []),
     ].join("\n"));
   }
 }

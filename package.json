@@ -1,6 +1,6 @@
 {
   "name": "@erfanium/h8-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CLI for Hamravesh",
   "type": "module",
   "license": "MIT",
@@ -11,7 +11,15 @@
     "type": "git",
     "url": "git+https://github.com/erfanium/h8-cli.git"
   },
-  "keywords": ["hamravesh", "darkube", "paas", "cli", "kubectl", "kubernetes", "cloud"],
+  "keywords": [
+    "hamravesh",
+    "darkube",
+    "paas",
+    "cli",
+    "kubectl",
+    "kubernetes",
+    "cloud"
+  ],
   "engines": {
     "node": ">=22"
   },

@@ -109,6 +109,15 @@ h8 app events <name> [--json]           Watch deployment events (WebSocket)
 h8 app pods <name> [--json]             List running pods
 h8 app exec <app> -- <command...>       Run a command inside a pod
 h8 app shell <name>                     Open an interactive shell
+h8 app port-forward <app> <port>[...]  Forward local ports to a pod (bare ports map to internal)
+```
+
+Port-forward auto-finds the pod (no need to know the cluster, namespace, or pod name). A bare local port is mapped to the app's internal port from its service definition:
+
+```bash
+h8 app port-forward myapp 3306        # service 3306 → container 3306
+h8 app port-forward myapp 80 8080     # multiple ports
+h8 app port-forward myapp 3000:3000   # explicit local:remote
 ```
 
 ### Mutations (kubectl-style set)

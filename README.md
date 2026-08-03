@@ -52,12 +52,14 @@ h8 app list
 
 Get an API key from the [Hamravesh Console](https://console.hamravesh.com) under your account settings.
 
+Persist the exports across sessions by adding them to your `~/.bashrc` (or `~/.zshrc`).
+
 ### Kubectl token
 
 Commands that shell out to the real `kubectl` binary — `h8 kubectl ...`, `h8 app exec`, `h8 app shell`, `h8 app port-forward` — also need a k8s OIDC token:
 
 ```bash
-h8 login kubectl [--email X] [--password Y]
+h8 login kubectl    # opens the browser
 ```
 
 The token is saved per-organization in `~/.config/h8/kubectl.json` and automatically refreshed when needed.

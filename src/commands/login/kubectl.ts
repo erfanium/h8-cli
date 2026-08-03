@@ -1,51 +1,10 @@
-import { Command, Flags } from "@oclif/core";
-import { createInterface } from "node:readline";
-import { stdin, stdout } from "node:process";
+import { Command } from "@oclif/core";
 import http from "node:http";
 import { exec } from "node:child_process";
 import { saveRefreshToken } from "../../lib/kube.js";
 
 const ISSUER = "https://api.console.hamravesh.ir/openid";
 const CLIENT_ID = "kubernetes";
-
-function prompt(q: string): Promise<string> {
-  const rl = createInterface({ input: stdin, output: stdout });
-  return new Promise((resolve) => rl.question(q, (a) => { rl.close(); resolve(a.trim()); }));
-}
-
-function promptSecret(q: string): Promise<string> {
-  return new Promise((resolve) => {
-    stdout.write(q);
-    if (!stdin.isTTY) {
-      const rl = createInterface({ input: stdin, output: stdout });
-      rl.on("line", (line) => { rl.close(); resolve(line.trim()); });
-      return;
-    }
-    let secret = "";
-    stdin.setRawMode(true);
-    stdin.resume();
-    function onData(buf: Buffer) {
-      for (const b of buf) {
-        if (b === 0x0d || b === 0x0a) {
-          stdout.write("\n");
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.off("data", onData);
-          resolve(secret);
-          return;
-        }
-        if (b === 0x03) { process.exit(1); }
-        if (b === 0x7f) {
-          if (secret.length > 0) { secret = secret.slice(0, -1); stdout.write("\b \b"); }
-          continue;
-        }
-        secret += String.fromCharCode(b);
-        stdout.write("*");
-      }
-    }
-    stdin.on("data", onData);
-  });
-}
 
 const REDIRECT_PORTS = [8000, 18000];
 
@@ -139,54 +98,13 @@ async function browserLogin(): Promise<string> {
   return token;
 }
 
-async function passwordLogin(email: string, password: string): Promise<string> {
-  const body = new URLSearchParams({
-    grant_type: "password",
-    client_id: CLIENT_ID,
-    username: email,
-    password,
-    scope: "openid profile email offline_access",
-  });
-
-  const res = await fetch(`${ISSUER}/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OIDC token request failed (${res.status}): ${text.slice(0, 200)}`);
-  }
-
-  const data = await res.json() as { access_token: string; id_token: string; refresh_token: string };
-  return JSON.stringify({
-    access_token: data.access_token,
-    id_token: data.id_token,
-    refresh_token: data.refresh_token,
-  });
-}
-
 export default class LoginKubectl extends Command {
-  static description = "Get a k8s OIDC token";
-  static flags = {
-    email: Flags.string({ description: "Console email (password grant)" }),
-    password: Flags.string({ description: "Console password (password grant)" }),
-    browser: Flags.boolean({ description: "Use browser-based login (default)", default: true, allowNo: true }),
-  };
+  static description = "Get a k8s OIDC token via browser login";
 
   async run() {
-    const { flags } = await this.parse(LoginKubectl);
+    const tokens = JSON.parse(await browserLogin()) as { access_token: string; id_token: string; refresh_token: string };
 
-    const raw = flags.browser
-      ? await browserLogin()
-      : await passwordLogin(
-          flags.email || await prompt("Email: "),
-          flags.password || await promptSecret("Password: "),
-        );
-    const tokens = JSON.parse(raw) as { access_token: string; id_token: string; refresh_token: string };
-
-    let org = process.env.H8_ORGANIZATION?.trim() || "default";
+    const org = process.env.H8_ORGANIZATION?.trim() || "default";
 
     saveRefreshToken(org, tokens.refresh_token);
     this.log("Refresh token saved successfully.");
